@@ -161,7 +161,8 @@ class MaterialsBuilder(Builder):
                 [
                     prop["task_id"]
                     for prop in all_props
-                    if prop["materials_key"] == "structure" and "Structure Optimization" in prop["task_type"]
+                    if prop["materials_key"] == "structure" and ("Structure Optimization" in prop["task_type"]
+                or "Static" in prop['task_type'])
                 ],
                 key=ID_to_int))
 

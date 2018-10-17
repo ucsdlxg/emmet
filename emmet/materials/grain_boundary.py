@@ -60,7 +60,7 @@ class GBBuilder(Builder):
         for m in mats:
             gb_doc = \
                 self.materials.query(properties=[self.materials.key, "structure", "GB_info", "nsites",
-                                                 "formula_pretty", "Material_id", "task_id", "energy_per_atom"],
+                                                 "formula_pretty", "material_id", "task_id", "energy_per_atom"],
                                      criteria={self.materials.key: m}).limit(1)[0]
             gb_docs.append(gb_doc)
 
@@ -86,12 +86,13 @@ class GBBuilder(Builder):
         gb_docs = list()
         mats = item[0]
         bulks = item[1]
-        all_gb_doc = {}
+        gb_doc = {}
         for mat in mats:
-            mpid = mat['Material_id'][0]
-            grain = {}
+            gb_doc['grain_boundaries'] = [grain]
+            gb_doc['material_id'] = mat['material_id'][0]
+            gb_doc['task_id'] = mat['task_id']
+            gb_doc['formula_pretty'] = mat['formula_pretty']
             space_group = {}
-            gb_doc = {}
             self.logger.debug("Tagging GBs for {}".format(mat["formula_pretty"]))
             structure = Structure.from_dict(mat['structure'])
             area = np.linalg.norm(np.cross(structure.lattice.matrix[0], structure.lattice.matrix[1]))
@@ -101,33 +102,23 @@ class GBBuilder(Builder):
                     analyzer = SpacegroupAnalyzer(bulk_str)
                     space_group['symbol'] = analyzer.get_space_group_symbol()
                     space_group['number'] = analyzer.get_space_group_number()
-                    grain['GB_energy in J/m2'] = 16.0217656 * (mat['energy_per_atom'] - bulk['energy_per_atom']) * \
-                                                 mat['nsites'] / area
+                    grain['gb_energy'] = 16.0217656 * (mat['energy_per_atom'] - \
+                                                               bulk['energy_per_atom']) * \
+                                                 mat['nsites'] / 2.0 / area
                     break
-            grain['initial_structure'] = mat['GB_info']
+            gb_doc['spacegroup'] = space_group
+            gb_doc['initial_structure'] = mat['GB_info']
             gb_temp = Gb.from_dict(mat['GB_info'])
-            grain['rotation_axis'] = gb_temp.rotation_axis
-            grain['rotation_angle'] = gb_temp.rotation_angle
-            grain['gb_plane'] = gb_temp.gb_plane
-            grain['sigma'] = gb_temp.sigma
+            gb_doc['rotation_axis'] = gb_temp.rotation_axis
+            gb_doc['rotation_angle'] = gb_temp.rotation_angle
+            gb_doc['gb_plane'] = gb_temp.gb_plane
+            gb_doc['sigma'] = gb_temp.sigma
             final_gb = Gb(structure.lattice, structure.species_and_occu, structure.frac_coords,
                           gb_temp.rotation_axis, gb_temp.rotation_angle, gb_temp.gb_plane,
                           gb_temp.init_cell, gb_temp.vacuum_thickness, gb_temp.ab_shift,
                           gb_temp.site_properties, gb_temp.oriented_unit_cell)
-            grain['final_structure'] = final_gb.as_dict()
-
-            if str(mpid) in all_gb_doc.keys():
-                all_gb_doc[str(mpid)]['grain_boundaries'].append(grain)
-            else:
-                gb_doc['grain_boundaries'] = [grain]
-                gb_doc['Material_id'] = mat['Material_id'][0]
-                gb_doc['task_id'] = mat['task_id']
-                gb_doc['formula_pretty'] = mat['formula_pretty']
-                gb_doc['spacegroup'] = space_group
-                all_gb_doc[str(mpid)] = gb_doc
-
-        for key in all_gb_doc.keys():
-            gb_docs.append(all_gb_doc[key])
+            gb_doc['final_structure'] = final_gb.as_dict()
+            gb_docs.append(gb_doc)
 
         return gb_docs
 
