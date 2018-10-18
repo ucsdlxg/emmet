@@ -3,7 +3,7 @@ import numpy as np
 
 from pymatgen import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.analysis.gb.gb import Gb
+from pymatgen.analysis.gb.grain import GrainBoundary
 
 from maggma.builder import Builder
 
@@ -88,7 +88,6 @@ class GBBuilder(Builder):
         bulks = item[1]
         gb_doc = {}
         for mat in mats:
-            gb_doc['grain_boundaries'] = [grain]
             gb_doc['material_id'] = mat['material_id'][0]
             gb_doc['task_id'] = mat['task_id']
             gb_doc['formula_pretty'] = mat['formula_pretty']
@@ -102,19 +101,19 @@ class GBBuilder(Builder):
                     analyzer = SpacegroupAnalyzer(bulk_str)
                     space_group['symbol'] = analyzer.get_space_group_symbol()
                     space_group['number'] = analyzer.get_space_group_number()
-                    grain['gb_energy'] = 16.0217656 * (mat['energy_per_atom'] - \
+                    gb_doc['gb_energy'] = 16.0217656 * (mat['energy_per_atom'] - \
                                                                bulk['energy_per_atom']) * \
                                                  mat['nsites'] / 2.0 / area
                     break
             gb_doc['spacegroup'] = space_group
             gb_doc['initial_structure'] = mat['GB_info']
-            gb_temp = Gb.from_dict(mat['GB_info'])
+            gb_temp = GrainBoundary.from_dict(mat['GB_info'])
             gb_doc['rotation_axis'] = gb_temp.rotation_axis
             gb_doc['rotation_angle'] = gb_temp.rotation_angle
             gb_doc['gb_plane'] = gb_temp.gb_plane
             gb_doc['sigma'] = gb_temp.sigma
-            final_gb = Gb(structure.lattice, structure.species_and_occu, structure.frac_coords,
-                          gb_temp.rotation_axis, gb_temp.rotation_angle, gb_temp.gb_plane,
+            final_gb = GrainBoundary(structure.lattice, structure.species_and_occu, structure.frac_coords,
+                          gb_temp.rotation_axis, gb_temp.rotation_angle, gb_temp.gb_plane,gb_temp.join_plane,
                           gb_temp.init_cell, gb_temp.vacuum_thickness, gb_temp.ab_shift,
                           gb_temp.site_properties, gb_temp.oriented_unit_cell)
             gb_doc['final_structure'] = final_gb.as_dict()
